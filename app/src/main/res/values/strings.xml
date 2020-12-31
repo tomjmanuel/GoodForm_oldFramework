@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GoodForm</string>
+    <string name="button">Get Video</string>
+    <string name="togglebutton">ToggleButton</string>
+</resources>
