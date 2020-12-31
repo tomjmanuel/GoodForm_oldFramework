@@ -23,6 +23,7 @@ public class VodView extends VideoView {
      * Resize video view by using SurfaceHolder.setFixedSize(...). See {@link android.view.SurfaceHolder#setFixedSize}
      * @param width
      * @param height
+     * testing branch push
      */
     public void setFixedVideoSize(int width, int height)
     {
