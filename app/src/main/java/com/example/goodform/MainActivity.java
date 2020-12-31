@@ -2,13 +2,12 @@ package com.example.goodform;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.Context;
+
 import android.content.Intent;
-import android.media.MediaPlayer;
+
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
+
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.GestureDetector.SimpleOnGestureListener;
@@ -18,13 +17,11 @@ import android.view.ScaleGestureDetector;
 import android.view.ScaleGestureDetector.OnScaleGestureListener;
 import android.view.View;
 import android.view.View.OnTouchListener;
-import android.widget.Button;
-import android.widget.FrameLayout;
+import android.widget.MediaController;
 import android.widget.ToggleButton;
-import android.widget.VideoView;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.widget.NestedScrollView;
+
 
 public class MainActivity extends Activity {
     // minimum video view width
@@ -35,9 +32,8 @@ public class MainActivity extends Activity {
     private ConstraintLayout vidCont2;
     // Custom Video View
     private VodView mVodView;
-    // media player
-    private MediaPlayer mediaplayer;
-
+    // mediacontroller
+    private MediaController controller;
     // detector to pinch zoom in/out
     private ScaleGestureDetector mScaleGestureDetector;
     // detector to single tab
@@ -47,12 +43,25 @@ public class MainActivity extends Activity {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // this is like the main() method for python projects, everything starts here
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // setup pointers to things we want to modify interactively
+
+        // setup pointers to things in the layout we want to modify interactively
+        // video container (gets resized during zooms)
         mVidContainer = (ConstraintLayout.LayoutParams) ((View) findViewById(R.id.VidFrameContainer)).getLayoutParams();
+        // video player (this is a custom class which extends the videoview class)
+        // It had to be custom to allow zoom and pan
         mVodView = (VodView) findViewById(R.id.vodView1);
+        // container of video container (fixed size to give cropping effect)
         vidCont2 = (ConstraintLayout) findViewById(R.id.VidContainer2);
+
+        // setup media controller
+        controller = new MediaController(this);
+        controller.setMediaPlayer(mVodView);
+        // anchor it to vidcontainer2 (size doesn't change with zoom) for display
+        controller.setAnchorView(vidCont2);
+
 
         // let the video container (outer) know that it is scrollable
         int foo = 1;
@@ -62,42 +71,30 @@ public class MainActivity extends Activity {
         vidCont2.canScrollVertically(foo);
         vidCont2.canScrollVertically(bar);
 
-        // Video Uri
-        //Uri uri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.allshare_video);
-        //mVodView.setVideoURI(uri);
 
-        // set up gesture listeners
+        // set up gesture listeners these handle touching the video
+        // One is for scaling (pinch) one for panning (drag)
         mScaleGestureDetector = new ScaleGestureDetector(this, new MyScaleGestureListener());
         mGestureDetector = new GestureDetector(this, new MySimpleOnGestureListener());
         mVodView.setOnTouchListener(new OnTouchListener() {
 
-            @Override
+            @Override // custom onTouch function to appropriately fall methods on different gestures
             public boolean onTouch(View v, MotionEvent event) {
                 mGestureDetector.onTouchEvent(event);
                 mScaleGestureDetector.onTouchEvent(event);
+                //controller.show();
                 return true;
             }
         });
 
-        // set up media player to check state of videoview
-        mVodView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
 
-                mp.setOnSeekCompleteListener(new MediaPlayer.OnSeekCompleteListener() {
-                    @Override
-                    public void onSeekComplete(MediaPlayer mp) {
-                        //TODO: Your code here
-
-                    }
-                });
-
-            }
-        });
     }
 
     public void getVideo(View view) {
-        //Intent pickVideo = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        //This method starts the intent to import a video
+        // it is called when the user hits the get video button
+
+        // Intents are used to start separate android activities and use other apps functionality
         Intent pickVideo = new Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
         //start activity activates the intent and returns calling an onActivityResult
         // the Intent is passed along with its data into that call
@@ -105,47 +102,63 @@ public class MainActivity extends Activity {
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // when the user selects a video, the intent calls this function
+        // and sort of passes itself into the function with the video data
         super.onActivityResult(requestCode, resultCode, data);
+
+        // URIs are used to point to files
         Uri selectedVideo = data.getData();
+        // point the URI at the videoview structure
         mVodView.setVideoURI(selectedVideo);
     }
 
     @Override
     protected void onResume() {
+        // resume video
         mVodView.start();
         super.onResume();
     }
 
     @Override
     protected void onPause() {
+        // pause video
         mVodView.pause();
         super.onPause();
     }
 
     private class MySimpleOnGestureListener extends SimpleOnGestureListener {
+        // Listen for single taps, and scrolls
+        // handle their occurences with custom instructions
 
         private int axisVal;
         private int axisVal2;
-        private int axisVal3;
-        private int axisVal4;
 
         @Override
         public boolean onSingleTapConfirmed(MotionEvent e) {
-            if (mVodView == null)
-                return false;
-            if (mVodView.isPlaying())
-                mVodView.pause();
-            else
-                mVodView.start();
+
+            // crop button turns on and off crop mode
+            ToggleButton cropbutton;
+            boolean cropmode;
+            cropbutton = (ToggleButton) findViewById(R.id.toggleButton);
+            cropmode = cropbutton.isChecked();
+
+
+            if (cropmode) {
+                // if cropmode is on, hide the media controller
+                controller.hide();
+            } else {
+                // if cropmode is off, show the media controller when user taps video
+                controller.show();
+            }
+
             return true;
         }
 
         @Override
-        public boolean onScroll(MotionEvent e1, MotionEvent e2, float velX, float velY){
+        public boolean onScroll(MotionEvent e1, MotionEvent e2, float velX, float velY) {
 
             // handler for when user scrolls along the video surface
             // if crop mode is on we want this to pan video
-            // if crop mode is off we want this to change the frame of the video
             ToggleButton cropbutton;
             boolean cropmode;
             cropbutton = (ToggleButton) findViewById(R.id.toggleButton);
@@ -158,57 +171,29 @@ public class MainActivity extends Activity {
 
             if (cropmode) {
 
-                if (mVodView == null)
+                if (mVodView == null) {
                     return false;
-                else
-                    axisVal = (int) velX;
-                axisVal2 = (int) velY;
-                //axisVal = (int) e1.getAxisValue(axis1)/10; //captures up down scroll amount
-                //axisVal2 = (int) e1.getAxisValue(axis2)/10; //captures left right scroll amount
-                //axisVal3 = (int) e2.getAxisValue(axis1)/10; //captures up down scroll amount
-                //axisVal4 = (int) e2.getAxisValue(axis2)/10; //captures left right scroll amount
-                // have to cast to integer if want to log these
-
-                //Log.d("axisVal","axisVal1: " + axisVal + " axisVal2: " + axisVal2);
-
-                scrollx = vidCont2.getScrollX();
-                scrolly = vidCont2.getScrollY();
-                //Log.d("scrollVal","scrollX: " + scrollx+ " scrollY: " + scrolly);
-
-                // this is where we need to modify the VidContainer to change position
-                // we want it to move around inside the constraintlayout2
-
-                vidCont2.scrollTo(axisVal + scrollx, axisVal2 + scrolly);
-                return true;
-            } else { // scrub mode
-                //get horizontal scroll amount
-                axisVal = (int) velX;
-
-                // get current frame of Video
-                //frame = (int) mediaplayer.getCurrentPosition();
-                frame = (int) mVodView.getCurrentPosition();
-                dur = mVodView.getDuration();
-                //mVodView.resume();
-                //mVodView.pause();
-                Log.d("current frame: ","frame: " + frame + " dur: " + dur + " velX: " + velX);
-
-                if (axisVal>0) {
-                    //mediaplayer.seekTo(frame + 1);
-                    mVodView.seekTo(frame + 1);
                 } else {
-                    //mediaplayer.seekTo(frame - 1);
-                    mVodView.seekTo(frame - 1);
+                    // scrolling code
+                    // velX and velY capture users scroll motion
+                    axisVal = (int) velX;
+                    axisVal2 = (int) velY;
+                    //Log.d("axisVal","axisVal1: " + axisVal + " axisVal2: " + axisVal2);
+                    // get current scrolled position
+                    scrollx = vidCont2.getScrollX();
+                    scrolly = vidCont2.getScrollY();
+                    //Log.d("scrollVal","scrollX: " + scrollx+ " scrollY: " + scrolly);
+                    // this is where we need to modify the VidContainer to change position
+                    // we want it to move around inside the constraintlayout2
+                    // amount to scroll is current position + user input
+                    vidCont2.scrollTo(axisVal + scrollx, axisVal2 + scrolly);
+                    return true;
                 }
-                //mVodView.resume();
-                //mVodView.pause();
-
+            } else { // do nothing if not in crop mode
                 return true;
             }
 
-
         }
-
-
     }
 
     private class MyScaleGestureListener implements OnScaleGestureListener {

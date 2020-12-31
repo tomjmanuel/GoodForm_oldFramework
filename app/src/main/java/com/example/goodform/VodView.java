@@ -5,6 +5,8 @@ import android.util.AttributeSet;
 import android.widget.VideoView;
 
 public class VodView extends VideoView {
+    // this is a custom version of videoview which simply adds a sexFixedVideoSize method
+    // to the class so we can resize it
 
     public VodView(Context context) {
         super(context);
