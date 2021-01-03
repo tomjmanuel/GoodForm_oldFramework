@@ -1,13 +1,9 @@
 package com.example.goodform;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
-
 import android.content.Intent;
-
 import android.net.Uri;
 import android.os.Bundle;
-
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.GestureDetector.SimpleOnGestureListener;
@@ -17,13 +13,21 @@ import android.view.ScaleGestureDetector;
 import android.view.ScaleGestureDetector.OnScaleGestureListener;
 import android.view.View;
 import android.view.View.OnTouchListener;
+import android.widget.Button;
 import android.widget.MediaController;
+import android.widget.Toast;
 import android.widget.ToggleButton;
-
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import com.google.android.youtube.player.YouTubeBaseActivity;
+import com.google.android.youtube.player.YouTubePlayer;
+import com.google.android.youtube.player.YouTubePlayerView;
+import com.google.android.youtube.player.YouTubeInitializationResult;
+import com.google.android.youtube.player.YouTubePlayer.Provider;
 
-public class MainActivity extends Activity {
+public class MainActivity extends YouTubeBaseActivity implements YouTubePlayer.OnInitializedListener {
+
+    /// related to users local video
     // minimum video view width
     static final int MIN_WIDTH = 100;
     //  videocontainer's LayoutParams
@@ -33,12 +37,17 @@ public class MainActivity extends Activity {
     // Custom Video View
     private VodView mVodView;
     // mediacontroller
-    private MediaController controller;
+    private MediaController controller; //videoview
     // detector to pinch zoom in/out
     private ScaleGestureDetector mScaleGestureDetector;
     // detector to single tab
     private GestureDetector mGestureDetector;
 
+    // related to youtube video
+    private static final int RECOVERY_REQUEST = 1;
+    private YouTubePlayerView youTubeView;
+    private Button playButton;
+    private Button pauseButton;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -46,6 +55,7 @@ public class MainActivity extends Activity {
         // this is like the main() method for python projects, everything starts here
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
 
         // setup pointers to things in the layout we want to modify interactively
         // video container (gets resized during zooms)
@@ -55,6 +65,9 @@ public class MainActivity extends Activity {
         mVodView = (VodView) findViewById(R.id.vodView1);
         // container of video container (fixed size to give cropping effect)
         vidCont2 = (ConstraintLayout) findViewById(R.id.VidContainer2);
+        // play and pause buttons
+        playButton = (Button) findViewById(R.id.play_button);
+        pauseButton = (Button) findViewById(R.id.pause_button);
 
         // setup media controller
         controller = new MediaController(this);
@@ -87,7 +100,43 @@ public class MainActivity extends Activity {
             }
         });
 
+        ////////////////////
+        // youtube related
+        youTubeView = (YouTubePlayerView) findViewById(R.id.youtube_view);
+        youTubeView.initialize(DeveloperKey.DEVELOPER_KEY, this);
+        Log.d("uh","here");
 
+    }
+
+    //////youtube related classes
+    @Override
+    public void onInitializationSuccess(Provider provider, YouTubePlayer player, boolean wasRestored) {
+        if (!wasRestored) {
+            player.cueVideo("fhWaJi1Hsfo"); // Plays https://www.youtube.com/watch?v=fhWaJi1Hsfo
+        }
+    }
+
+    @Override
+    public void onInitializationFailure(Provider provider, YouTubeInitializationResult errorReason) {
+        if (errorReason.isUserRecoverableError()) {
+            errorReason.getErrorDialog(this, RECOVERY_REQUEST).show();
+        } else {
+            String error = String.format(getString(R.string.player_error), errorReason.toString());
+            Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /*
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == RECOVERY_REQUEST) {
+            // Retry initialization if user performed a recovery action
+            getYouTubePlayerProvider().initialize(DeveloperKey.DEVELOPER_KEY, this);
+        }
+    }*/
+
+    protected Provider getYouTubePlayerProvider() {
+        return youTubeView;
     }
 
     public void getVideo(View view) {
@@ -246,4 +295,6 @@ public class MainActivity extends Activity {
         }
 
     }
+
 }
+

@@ -2,4 +2,6 @@
     <string name="app_name">GoodForm</string>
     <string name="button">Get Video</string>
     <string name="togglebutton">ToggleButton</string>
+    <string name="error_player">\"\"</string>
+    <string name="player_error">Error initializing YouTube player: %s</string>
 </resources>
